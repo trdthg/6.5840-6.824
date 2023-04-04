@@ -386,7 +386,7 @@ func (rf *Raft) startElection() {
 	}()
 
 	// 150 - 250 ms
-	electionTimeout := time.Duration(rand.Intn(100)+150) * time.Millisecond
+	electionTimeout := time.Duration(rand.Intn(100)+110) * time.Millisecond
 	waitVoteDoneTimer := time.NewTimer(electionTimeout)
 	// 这里给出一部分时间，等待接收心跳，看看是否能发现现有的 leader
 	DTmp("%s 等待超时或者 heartbeat", rf.toString())
@@ -427,7 +427,7 @@ func (rf *Raft) handleHeartbeat() {
 	for {
 		DTrace("%s 启动超时定时器", rf.toString())
 		// random int from 200-500
-		randomTimeout := time.Duration(rand.Int63()%300+200) * time.Millisecond
+		randomTimeout := time.Duration(rand.Int63()%200+300) * time.Millisecond
 		timer := time.NewTimer(randomTimeout)
 		select {
 		case <-timer.C:

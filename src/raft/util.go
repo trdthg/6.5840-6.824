@@ -27,7 +27,7 @@ var topicMap = map[Topic]string{
 }
 
 // Debugging
-const Debug = 1 == 1
+const Debug = 1 == 0
 const Level = 0
 
 // max log count
