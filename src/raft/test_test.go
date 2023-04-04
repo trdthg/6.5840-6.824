@@ -8,16 +8,43 @@ package raft
 // test with the original before submitting.
 //
 
-import "testing"
-import "fmt"
-import "time"
-import "math/rand"
-import "sync/atomic"
-import "sync"
+import (
+	"fmt"
+	"math/rand"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+)
 
 // The tester generously allows solutions to complete elections in one second
 // (much more than the paper's range of timeouts).
 const RaftElectionTimeout = 1000 * time.Millisecond
+
+func TestUseLogger(t *testing.T) {
+	TestLogger()
+}
+
+func TestChannel(t *testing.T) {
+	ch := make(chan struct{})
+	go func() {
+		fmt.Printf("start: [%p]\n", &ch)
+	out:
+		for {
+			fmt.Printf("2, [%p]\n", &ch)
+			select {
+			case <-time.After(time.Duration(rand.Int()%30) * time.Millisecond):
+				ch <- struct{}{}
+				fmt.Printf("	3, [%p]\n", &ch)
+				break out
+			case <-time.After(time.Duration(rand.Int()%10) * time.Millisecond):
+				fmt.Printf("	4, [%p]\n", &ch)
+			}
+		}
+	}()
+	<-ch
+	fmt.Printf("finish: [%p]\n", &ch)
+}
 
 func TestInitialElection2A(t *testing.T) {
 	servers := 3
@@ -59,6 +86,7 @@ func TestReElection2A(t *testing.T) {
 
 	leader1 := cfg.checkOneLeader()
 
+	DNotice("leader [%d] disconnected", leader1)
 	// if the leader disconnects, a new one should be elected.
 	cfg.disconnect(leader1)
 	cfg.checkOneLeader()
@@ -67,12 +95,17 @@ func TestReElection2A(t *testing.T) {
 	// disturb the new leader. and the old leader
 	// should switch to follower.
 	cfg.connect(leader1)
+	DNotice("leader [%d] reconne", leader1)
+
 	leader2 := cfg.checkOneLeader()
 
 	// if there's no quorum, no new leader should
 	// be elected.
 	cfg.disconnect(leader2)
+	DNotice("leader [%d] disconnected", leader2)
 	cfg.disconnect((leader2 + 1) % servers)
+	DNotice("follower [%d] disconnected", (leader2+1)%servers)
+
 	time.Sleep(2 * RaftElectionTimeout)
 
 	// check that the one connected server
@@ -81,10 +114,14 @@ func TestReElection2A(t *testing.T) {
 
 	// if a quorum arises, it should elect a leader.
 	cfg.connect((leader2 + 1) % servers)
+	DNotice("candidate [%d] is alive", (leader2+2)%servers)
+	DNotice("candidate [%d] reconne", (leader2+1)%servers)
+	DNotice("leader [%d] still disconnect", leader2)
 	cfg.checkOneLeader()
 
 	// re-join of last node shouldn't prevent leader from existing.
 	cfg.connect(leader2)
+	DNotice("leader [%d] reconne", leader2)
 	cfg.checkOneLeader()
 
 	cfg.end()
