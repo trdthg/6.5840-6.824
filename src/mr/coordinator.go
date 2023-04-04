@@ -67,7 +67,7 @@ type Task struct {
 	TaskId        int
 	Type          TaskType
 	InputFileName string
-	// OutputFileName string
+	// OutputFileName string``
 	Status TaskStatus
 	// Worker *Workerr
 }
@@ -116,9 +116,9 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 
 	}
 	// send map tasks
+	c.mapWg.Add(len(files))
 	go func() {
 		// fmt.Printf("send map tasks, len %d", len(files))
-		c.mapWg.Add(len(files))
 		for i := 0; i < c.nMap; i++ {
 			c.mapCh <- c.mapTasks[i]
 		}
@@ -131,9 +131,11 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 			Status: TaskIdle,
 		}
 	}
+	c.reduceWg.Add(c.nReduce)
 	go func() {
-		c.reduceWg.Add(c.nReduce)
 		c.mapWg.Wait()
+		c.mapDone = true
+		close(c.mapCh)
 		for i := 0; i < c.nReduce; i++ {
 			c.reduceCh <- c.reduceTasks[i]
 		}
@@ -281,11 +283,11 @@ func (c *Coordinator) server() {
 
 // the RPC argument and reply types are defined in rpc.go.
 func (c *Coordinator) RegisterWorker(args *RegisterWorkerArgs, reply *RegisterWorkerReply) error {
-	c.workers[args.Pid] = &Workerr{
-		lastPing: time.Now(),
-		status:   WorkerIdle,
-		pid:      args.Pid,
-	}
+	// c.workers[args.Pid] = &Workerr{
+	// 	lastPing: time.Now(),
+	// 	status:   WorkerIdle,
+	// 	pid:      args.Pid,
+	// }
 	// fmt.Printf("pid: %d registerd, woeker len: %d\n", args.Pid, len(c.workers))
 	reply.Pid = args.Pid
 	return nil
@@ -307,10 +309,6 @@ func (c *Coordinator) UpdateLastPing(args *UpdateLastPingArgs, reply *UpdateLast
 // main/mrcoordinator.go calls Done() periodically to find out
 // if the entire job has finished.
 func (c *Coordinator) Done() bool {
-
-	c.mapWg.Wait()
-	c.mapDone = true
-	close(c.mapCh)
 
 	c.reduceWg.Wait()
 	c.reduceDone = true
